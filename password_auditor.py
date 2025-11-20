@@ -8,6 +8,7 @@ Description: Analyzes password complexity against standard security policies
 
 import string
 import sys
+import getpass
 
 def check_strength(password):
     # --- Setting up initial variables ---
@@ -70,7 +71,7 @@ def check_strength(password):
 if __name__ == "__main__":
     print("--- 🔒 NETWORK SECURITY PASSWORD AUDITOR 🔒 ---")
     try:
-        user_pass = input("Enter password to audit: ")
+        user_pass = getpass.getpass("Enter password to audit (Hidden): ")
         
         final_score, report = check_strength(user_pass)
 
