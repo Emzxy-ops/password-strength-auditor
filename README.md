@@ -1,39 +1,18 @@
-# 🔒 Password Strength Auditor
+# 🔒 Network Security Password Auditor
 
-## Overview
-A Python-based security tool designed to audit password complexity against standard cybersecurity policies (NIST guidelines). This tool helps users identify weak credentials that are vulnerable to brute-force and dictionary attacks.
+### 🔴 [Click Here to Use the Live App](https://password-strength-auditor-lyrd63fyqbd65r5ptebjcn.streamlit.app/)
 
-## Features
-- **Length Verification:** Enforces minimum character requirements (8+) to increase entropy.
-- **Complexity Analysis:** Scans for Uppercase, Lowercase, Numeric, and Special characters.
-- **Security Reporting:** Provides actionable feedback on specific vulnerabilities found in the password.
+![Live Demo](demo.png)
 
-## Skills Demonstrated
-- **Python Scripting:** String manipulation and conditional logic.
-- **Security Compliance:** Implementing logic based on strong password policies.
-- **Input Validation:** Handling user input securely.
+## 🛡️ Project Overview
+A network security tool designed to audit password complexity and check for compromised credentials.
 
-## How to Run
-1. Clone the repository.
-2. Run the script in your terminal:
-   ```bash
-   python3 password_auditor.py
- ### **Step 2: Save the File**
-Press **`Ctrl` + `S`** to save the file.
+## ⚡ Key Features
+- **Breach Detection:** Integrates with the **Have I Been Pwned API** using k-Anonymity (SHA-1 hashing).
+- **NIST Compliance:** Analyzes entropy based on length, complexity, and character variety.
+- **Privacy-First:** Passwords are hashed locally; only the first 5 characters of the hash leave the client.
 
-### **Step 3: The "Update" Commit**
-Because you changed the file *after* your first commit, Git sees this as a "modification." We need to save this new version.
-
-Go to your terminal (it should still be open) and run these two commands:
-
-1.  **Stage the change:**
-    ```powershell
-    git add .
-    ```
-2.  **Save the update:**
-    ```powershell
-    git commit -m "Added documentation to README"
-    ```
-
-**Tell me when you see the success message (it should say `1 file changed`).**
-Then we will add the final "Hidden Input" security feature to the Python code before we push everything to the cloud! 
+## 🛠️ Tech Stack
+- **Python** (Logic & Encryption)
+- **Streamlit** (Frontend UI)
+- **Requests** (API Integration)
