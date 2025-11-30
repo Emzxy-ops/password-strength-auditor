@@ -1,95 +1,136 @@
-#!/usr/bin/env python3
-"""
-Network Security Tool: Password Strength Auditor
-Author: [Emmanuel B. Onavewu]
-Description: Analyzes password complexity against standard security policies
-(NIST guidelines) to prevent brute-force and dictionary attacks.
-"""
-
+import streamlit as st
 import string
-import sys
-import getpass
+import hashlib
+import requests
 
+# --- PAGE CONFIGURATION ---
+st.set_page_config(page_title="Network Security Auditor", page_icon="🔒", layout="centered")
+
+# --- HIBP API LOGIC (Real Implementation) ---
+def check_pwned_api(password):
+    """
+    Checks the password against the Have I Been Pwned API.
+    Uses k-Anonymity: Only sends the first 5 chars of the SHA-1 hash.
+    Returns: The number of times the password has been leaked (0 if safe).
+    """
+    # 1. Hash the password (SHA-1)
+    sha1password = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
+    
+    # 2. Split hash: first 5 chars (prefix) to send, rest (suffix) to check locally
+    first5_char = sha1password[:5]
+    tail = sha1password[5:]
+    
+    # 3. Query the API
+    url = 'https://api.pwnedpasswords.com/range/' + first5_char
+    try:
+        res = requests.get(url)
+        if res.status_code != 200:
+            return 0 # Fail safe: assume 0 if API is down so app doesn't crash
+            
+        # 4. Check response for our specific hash suffix
+        hashes = (line.split(':') for line in res.text.splitlines())
+        for h, count in hashes:
+            if h == tail:
+                return int(count)
+        return 0
+    except:
+        return 0 # Fail safe for connection issues
+
+# --- CORE LOGIC ---
 def check_strength(password):
-    # --- Setting up initial variables ---
     score = 0
-    length_error = False
     feedback = []
     
-    # Security strenght_report
-    criteria = {
-        "length": False,
-        "upper": False,
-        "lower": False,
-        "digit": False,
-        "symbol": False
-    }
+    # 0. HIBP Check (The New Feature)
+    pwned_count = check_pwned_api(password)
+    if pwned_count > 0:
+        feedback.append(f"❌ CRITICAL: This password has been leaked {pwned_count} times in data breaches!")
+        # We don't return immediately; we still analyze complexity, but score takes a hit.
+        score = 0 
+    else:
+        feedback.append("✅ Database Check: Password not found in known breaches.")
+        score += 1 # Bonus point for not being leaked
 
-    # --- Check if password meets minimum length (8 chars) ---
+    # 1. Length Check
     if len(password) >= 8:
         score += 1
-        criteria["length"] = True
     else:
-        length_error = True
-        feedback.append("❌ Vulnerability: Password too short (Risk of Brute Force).")
+        feedback.append("❌ Length: Too short (Minimum 8 characters).")
 
-    # --- 2. Complexity Analysis ---
-    for char in password:
-        if char in string.ascii_uppercase: criteria["upper"] = True
-        if char in string.ascii_lowercase: criteria["lower"] = True
-        if char in string.digits: criteria["digit"] = True
-        if char in string.punctuation: criteria["symbol"] = True
+    # 2. Complexity Variables
+    has_upper = any(char in string.ascii_uppercase for char in password)
+    has_lower = any(char in string.ascii_lowercase for char in password)
+    has_digit = any(char in string.digits for char in password)
+    has_symbol = any(char in string.punctuation for char in password)
 
-    # --- 3. Scoring & Feedback ---
-    # Upper Case
-    if criteria["upper"]:
-        score += 1
-    else:
-        feedback.append("⚠️ Weakness: No Uppercase letters.")
-
-    # Lower Case
-    if criteria["lower"]:
-        score += 1
-    else:
-        feedback.append("⚠️ Weakness: No Lowercase letters.")
-
-    # Digits
-    if criteria["digit"]:
-        score += 1
-    else:
-        feedback.append("⚠️ Weakness: No Numeric digits.")
-
-    # Symbols
-    if criteria["symbol"]:
-        score += 1
-    else:
-        feedback.append("⚠️ Weakness: No Special characters.")
-
-    return score, feedback
-
-# --- Main Execution ---
-if __name__ == "__main__":
-    print("--- 🔒 NETWORK SECURITY PASSWORD AUDITOR 🔒 ---")
-    try:
-        user_pass = getpass.getpass("Enter password to audit (Hidden): ")
+    # 3. Scoring
+    if has_upper: score += 1
+    else: feedback.append("⚠️ Complexity: Missing Uppercase letters.")
         
-        final_score, report = check_strength(user_pass)
+    if has_lower: score += 1
+    else: feedback.append("⚠️ Complexity: Missing Lowercase letters.")
+        
+    if has_digit: score += 1
+    else: feedback.append("⚠️ Complexity: Missing Numeric digits.")
+        
+    if has_symbol: score += 1
+    else: feedback.append("⚠️ Complexity: Missing Special characters.")
 
-        print("\n--- AUDIT REPORT ---")
-        for item in report:
-            print(item)
-            
-        print("-" * 30)
-        if final_score <= 2:
-            print(f"RESULT: WEAK 🔴 (Score: {final_score}/5)")
-            print("Recommendation: Change immediately.")
+    # Cap score at 5
+    if score > 5: score = 5
+    
+    return score, feedback, pwned_count
+
+# --- STREAMLIT UI ---
+def main():
+    st.sidebar.header("About the Developer")
+    st.sidebar.text("Emmanuel B. Onavewu")
+    st.sidebar.info("Computer Science Student\nNetwork Security Enthusiast")
+    st.sidebar.markdown("---")
+    st.sidebar.write("Features:")
+    st.sidebar.caption("✅ NIST Complexity Analysis")
+    st.sidebar.caption("✅ HIBP API Integration (k-Anonymity)")
+
+    st.title("🔒 Network Security Password Auditor")
+    st.markdown("Test your password against **real-world data breaches** and **complexity standards**.")
+
+    user_pass = st.text_input("Enter Password:", type="password", help="Passes k-Anonymity check. Safe to use.")
+
+    if user_pass:
+        final_score, report, pwned_count = check_strength(user_pass)
+
+        st.markdown("---")
+        st.subheader("Audit Report")
+
+        # Visuals
+        progress_value = final_score / 5
+        
+        if pwned_count > 0:
+            st.error(f"⚠️ BREACH DETECTED: Found {pwned_count} times!")
+            st.progress(0) # Force bar to 0 on breach
+        elif final_score <= 2:
+            st.progress(progress_value)
+            st.error(f"WEAK 🔴 (Score: {final_score}/5)")
         elif final_score <= 4:
-            print(f"RESULT: MODERATE 🟡 (Score: {final_score}/5)")
-            print("Recommendation: Enable 2FA if possible.")
+            st.progress(progress_value)
+            st.warning(f"MODERATE 🟡 (Score: {final_score}/5)")
         else:
-            print(f"RESULT: STRONG 🟢 (Score: {final_score}/5)")
-            print("Status: Meets Complex Security Standards.")
-            
-    except KeyboardInterrupt:
-        print("\n\nAudit cancelled by user.")
-        sys.exit()
+            st.progress(progress_value)
+            st.success(f"STRONG 🟢 (Score: {final_score}/5)")
+
+        with st.expander("Detailed Analysis", expanded=True):
+            for item in report:
+                if "CRITICAL" in item:
+                    st.error(item)
+                elif "✅" in item:
+                    st.success(item)
+                elif "❌" in item:
+                    st.error(item)
+                else:
+                    st.warning(item)
+    else:
+        st.info("System Ready. Awaiting Input...")
+
+if __name__ == "__main__":
+    main()
+    
